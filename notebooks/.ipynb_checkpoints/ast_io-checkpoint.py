@@ -9,6 +9,19 @@ import matplotlib.widgets as mwidgets
 import random
 
 
+def shuffle_data(data):
+
+    ast_proc = np.array(data.variables['ast_processed'])
+    ast_cml_id = np.array(data.variables['cml_id'])
+
+    c = list(zip(ast_proc, ast_cml_id))
+
+    random.shuffle(c)
+
+    a, b = zip(*c)
+
+    return np.array(b),  np.array(a)
+
 
 def ast_tool(ds, ast,rado, cml_id_shuf, ast_proc_shuf):
 
