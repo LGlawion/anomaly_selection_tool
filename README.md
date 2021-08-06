@@ -22,4 +22,3 @@ The ast_example jupyter notebook showcase the principle usecase of anomaly_selec
  Polz, J., Schmidt, L., Glawion, L., Graf, M., Werner, C., Chwala, C., Mollenhauer, H., Rebmann, C., Kunstmann, H., and Bumberger, J.: Supervised and unsupervised machine-learning for automated quality control of environmental sensor data, EGU General Assembly 2021, online, 19–30 Apr 2021, EGU21-14485, https://doi.org/10.5194/egusphere-egu21-14485, 2021. 
  
  Chwala, C., Graf, M., Polz, J., Rothermel, S., Glawion, L., Winterrath, T., Smiatek, G., and Kunstmann, H.: Recent improvements of CML rainfall estimation and CML-Radar combination in Germany, EGU General Assembly 2021, online, 19–30 Apr 2021, EGU21-15207, https://doi.org/10.5194/egusphere-egu21-15207, 2021. 
-
