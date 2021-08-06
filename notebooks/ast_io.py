@@ -9,6 +9,27 @@ import matplotlib.widgets as mwidgets
 import random
 
 
+'''
+Process:
+
+1. select an existing cml netcdf file to start with. (e.g. '/pd/data/CML/data/processed/proc_graf_hess_2019.002/timeseries/cnn_detection_standard_gapfill/proc_cnn082_gapstandard_2018_05.nc')
+2. check if this file was already copied for AST processing
+3. If no, open the file with xarray and add the ast_processed and anomaly variables and save to netcdf by appending '_ast_2021.001' to the file name
+
+
+4. If yes or 3. has been performed, open the netcdf using netCDF4 and extract the cml_id and the ast_processed variables.
+5. Create a cml_list containing the cml ids in a random order
+6. Pick the first cml id from the list
+7. Check if ast_processed is True
+8. If yes, skip the cml
+9. If no, load this cmls txrx series using netCDF4
+10. Use the AST to create numpy arrays of the same shape as txrx containing True or False for flags
+11. Overwrite the anomaly variables for this cml in the netcdf
+12. Pick the next cml from the list and return to 7.
+
+'''
+
+
 def shuffle_data(data):
 
     ast_proc = np.array(data.variables['ast_processed'])
@@ -24,8 +45,36 @@ def shuffle_data(data):
 
 
 def ast_tool(ds, ast,rado, cml_id_shuf, ast_proc_shuf):
-
-    #%matplotlib widget
+    
+    """open anomaly_selection_tool:
+    
+    Parameters
+    ----------
+    ds : netCDF
+    input .nc file containing time series data to be flagged
+    
+    ast : netCDF
+    output .nc file. Copy of input ds file containg selectable anomaly
+    classes as variables
+    
+    rado : netCDF
+    reference .nc file, to highlight rainy perdiods.
+    
+    cml_id_shuf: list
+    Shuffeld CML_IDs
+    
+    ast_proc_shuf: list
+    Information of flagging status of each individuel CML in shuffeld order.
+    
+    
+    Returns
+    -------
+    
+    Note
+    ----      
+    
+    """
+   
 
     selected_area = []
 
