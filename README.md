@@ -15,6 +15,8 @@ Anomaly_selection_tool can be used to assigne time periods to different anomaly 
 Flags are written directly into a netCDF. Correction is possible.
 A reference variable helps to distinguish between anomalies and normal signal fluctuations.
 
+The ast_example jupyter notebook showcase the principle usecase of anomaly_selection_tool.
+
 ## Reference
 
  Polz, J., Schmidt, L., Glawion, L., Graf, M., Werner, C., Chwala, C., Mollenhauer, H., Rebmann, C., Kunstmann, H., and Bumberger, J.: Supervised and unsupervised machine-learning for automated quality control of environmental sensor data, EGU General Assembly 2021, online, 19–30 Apr 2021, EGU21-14485, https://doi.org/10.5194/egusphere-egu21-14485, 2021. 
