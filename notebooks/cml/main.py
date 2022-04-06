@@ -21,122 +21,168 @@ import numpy as np
 
 from bokeh.io import curdoc
 from bokeh.layouts import column, row
-from bokeh.models import CheckboxButtonGroup, Button, ColumnDataSource, PreText, Select, CustomJS
+from bokeh.models import Band, CheckboxButtonGroup, Button, ColumnDataSource, PreText, Select, CustomJS
 from bokeh.plotting import figure
+from bokeh.events import ButtonClick
 import xarray as xr
+import glob
+import netCDF4
 
 DATA_DIR = join(dirname(__file__), 'daily')
 
-DEFAULT_TICKERS = xr.open_dataset('../data/ast_example_cml_raw.nc').cml_id.values
+MONTHS = [s.split('/')[-1] for s in glob.glob('../data/raw*')]
+MONTHS.sort()
+DEFAULT_TICKERS = xr.open_dataset('../data/raw01.nc').cml_id.values
 # print(DEFAULT_TICKERS)
 
 def nix(val, lst):
-    return [x for x in lst if x != val]
-#     return [x for x in lst]
+#     return [x for x in lst if x != val]
+    return [x for x in lst]
 
-@lru_cache()
-def load_ticker(cml_id, channel_id):
-    data = xr.open_dataset('../data/ast_example_cml_raw.nc').sel(cml_id=cml_id).isel(channel_id=channel_id).to_pandas()
+# @lru_cache()
+def load_ticker(cml_id, month):
+    data = xr.open_dataset('../data/'+month).sel(cml_id=cml_id).isel(channel_id=0).load()
+    data = data.to_pandas()
     data['date'] = data.index
+    data = data.rename(columns={'txrx':'trsl1', 'rainfall_amount':'R'})
+    df2 = xr.open_dataset('../data/'+month).sel(cml_id=cml_id).isel(channel_id=1).txrx.to_pandas()
+    data.loc[:,'trsl2'] = df2.values
     data = data.set_index('date')
     return data
 
-@lru_cache()
-def get_data(cml_id):
-    df1 = load_ticker(cml_id, 0)
-    df2 = load_ticker(cml_id, 1)
-    data=pd.DataFrame()
-    data['t1'] = df1.txrx
-    data['t2'] = df2.txrx
-    data['R'] = df1.R
-# ... append more variables if you like
+# @lru_cache()
+def get_data(cml_id, month):
+    data = load_ticker(cml_id, month)
 #     print(data.head())
     return data
+
 
 # set up widgets
 
 stats = PreText(text='', width=500)
-# ticker1 = Select(value='1', options=nix('R', DEFAULT_TICKERS))
-ticker2 = Select(value='example_1', options=nix('example_1', DEFAULT_TICKERS))
+ticker1 = Select(value='raw01.nc', options=nix('raw01.nc', MONTHS))
+ticker2 = Select(value='BY0081_2_BY1150_2', options=nix('BY0081_2_BY1150_2', DEFAULT_TICKERS))
 
 button1 = Button(label="Save CML flags", button_type="success")
 button2 = Button(label="Delete CML flags", button_type="success")
-LABELS = ["Option 1", "Option 2", "Option 3", "Option 4", "Option 5"]
+button3 = Button(label="Flag period", button_type="success")
+LABELS = ["Dry", "Wet", "Anomaly", "Dew", "LOL"]
 
-checkbox_button_group = CheckboxButtonGroup(labels=LABELS, active=[0, 1])
+checkbox_button_group = CheckboxButtonGroup(labels=LABELS, active=[])
 checkbox_button_group.js_on_click(CustomJS(code="""
     console.log('checkbox_button_group: active=' + this.active, this.toString())
 """))
+
+def callback1(event):
+    data = source.to_df()
+    print(data.head())
+
+def callback2(event):
+    for label in LABELS:
+        patches = {
+            label : [ (slice(0,None), np.zeros_like(source.data[label])) ],
+        }
+
+        source.patch(patches)
+
+def callback3(event):
+    selected = source.selected.indices
+#     print(selected)
+    ind = checkbox_button_group.to_json(True)['active']
+    for i, label in enumerate(LABELS):
+        if i in ind:
+            patches = {
+                label : [(s,(i+1)/len(LABELS)) for s in selected],
+            }
+            source.patch(patches)
+
+button1.on_event(ButtonClick, callback1)
+button2.on_event(ButtonClick, callback2)
+button3.on_event(ButtonClick, callback3)
 
 # set up plots
 
 source = ColumnDataSource(data=dict(date=[], t1=[], t2=[],))
 source_static = ColumnDataSource(data=dict(date=[], t1=[], t2=[],))
-tools = 'pan,wheel_zoom,xbox_select,reset'
+tools = 'pan,wheel_zoom,xbox_select,reset,box_zoom'
 
-corr = figure(width=250, height=250,
-              tools='pan,wheel_zoom,box_select,reset')
-corr.circle('t1', 'R', size=2, source=source,
-            selection_color="orange", alpha=1, nonselection_alpha=1, selection_alpha=1)
+# corr = figure(width=250, height=250,
+#               tools='pan,box_zoom,box_select,reset')
+# corr.circle('trsl1', 'R', size=2, source=source,
+#             selection_color="orange", alpha=1, nonselection_alpha=1, selection_alpha=1)
 
 ts1 = figure(width=1800, height=250, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
-ts1.line('date', 't1', source=source_static)
-ts1.circle('date', 't1', size=1, source=source, color=None, selection_color="orange")
-ts1.line('date', 't2', source=source_static, color="gray")
-ts1.circle('date', 't2', size=1, source=source, color=None, selection_color="orange")
+ts1.line('date', 'trsl1', legend_label="channel 1", source=source_static)
+ts1.circle('date', 'trsl1', size=5, source=source, color=None, selection_color="green")
+ts1.line('date', 'trsl2', legend_label="channel 2", source=source_static, color="gray")
+ts1.circle('date', 'trsl2', size=2, source=source, color=None, selection_color="green")
 
-ts2 = figure(width=1800, height=150, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
+
+ts2 = figure(width=1800, height=200, tools=tools, x_axis_type='datetime', active_drag="xbox_select", y_range=(0.1, 1.1))
+colors = ['red','blue','pink','gray', 'orange']
+for i, label in enumerate(LABELS):
+#     ts2.line('date', y=source.data[label]*i/len(LABELS), legend_label=label, color=colors[i], source=source, line_width=10)
+#     print(source.data[label])
+#     ts2.circle('date', y=source.data[label]*i/len(LABELS), size=10, source=source, color=colors[i], selection_color="green")
+    ts2.circle('date', label, size=10, source=source, legend_label=label, color=colors[i])
+    band = Band(base='date', lower=0, upper=label, source=source, level='underlay',
+            fill_alpha=1.0, line_width=1, line_color=colors[i])
+    ts1.add_layout(band)
 ts2.x_range = ts1.x_range
 
 ts3 = figure(width=1800, height=150, tools=tools, x_axis_type='datetime', active_drag="xbox_select")
 ts3.x_range = ts1.x_range
 ts3.line('date', 'R', source=source_static)
-ts3.circle('date', 'R', size=1, source=source, color=None, selection_color="orange")
+ts3.circle('date', 'R', size=2, source=source, color=None, selection_color="green")
 
 # set up callbacks
 
-# def ticker1_change(attrname, old, new):
-#     ticker2.options = nix(new, DEFAULT_TICKERS)
-#     update()
+def ticker1_change(attrname, old, new):
+    ticker2.options = nix(new, DEFAULT_TICKERS)
+    update()
 
 def ticker2_change(attrname, old, new):
     ticker2.options = nix(new, DEFAULT_TICKERS)
     update()
 
 def update(selected=None):
-    t2 = ticker2.value
-
-    df = get_data(t2)
-    data = df[['t1', 't2', 'R']]
+    cml_id = ticker2.value
+    month = ticker1.value
+    data = get_data(cml_id, month)
     source.data = data
     source_static.data = data
 
-    update_stats(df, ['t1', 't2', 'R'])
+    update_stats(data, ['trsl1', 'trsl2', 'R'])
 
-    corr.title.text = 'TRSL channel 1 vs. Path averaged radar rainfall'
-    ts1.title.text, ts2.title.text, ts3.title.text = 'TRSL channel 1', 'TRSL channel 2', 'Path averaged radar rainfall'
+#     corr.title.text = 'TRSL channel 1 vs. Path averaged radar rainfall'
+    ts1.title.text, ts2.title.text, ts3.title.text = 'TRSL channel 1', 'Anomaly', 'Path averaged radar rainfall'
 
 def update_stats(data, c_list):
     stats.text = str(data[c_list].describe())
 
-# ticker1.on_change('value', ticker1_change)
+ticker1.on_change('value', ticker1_change)
 ticker2.on_change('value', ticker2_change)
 
 def selection_change(attrname, old, new):
-    t2 = ticker2.value
-    data = get_data(t2)
+#     cml_id = ticker2.value
+#     month = ticker1.value
+#     data = get_data(cml_id, month)
+    data = source.to_df()
     selected = source.selected.indices
     if selected:
         data = data.iloc[selected, :]
-    update_stats(data, ['t1', 't2', 'R'])
+    update_stats(data, ['trsl1', 'trsl2', 'R'])
 
 source.selected.on_change('indices', selection_change)
 
 # set up layout
-widgets = column(ticker2, button1, button2)
-main_row = row(widgets, stats, corr)
+widgets = column(ticker1, ticker2, button1, button2)
+main_row = row(widgets, 
+               stats, 
+#                corr,
+              )
 series = column(ts1, ts2, ts3)
-layout = column(main_row, checkbox_button_group, series)
+layout = column(main_row, button3, checkbox_button_group, series)
 
 # initialize
 update()
