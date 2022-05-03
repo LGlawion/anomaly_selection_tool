@@ -28,21 +28,21 @@ import xarray as xr
 import glob
 import netCDF4
 
-DATA_DIR = join(dirname(__file__), 'daily')
+# DATA_DIR = join(dirname(__file__), 'daily')
 
-MONTHS = [s.split('_')[-1].split('.')[0] for s in glob.glob('/pd/data/CML/data/reference/anomaly_flags/2022.01.BY1412_2_BY1298_2_2019_*')]
+MONTHS = [s.split('_')[-1].split('.')[0] for s in glob.glob('data/2022.01.HY8831_2_HY1116_4_2019_*')]
 MONTHS.sort()
-DEFAULT_TICKERS = list(xr.open_dataset('/pd/data/CML/data/reference/anomaly_flags/2022.01.cml_list.nc').cml_id.values)
+DEFAULT_TICKERS = list(xr.open_dataset('data/2022.01.cml_list.nc').cml_id.values)
 
 # @lru_cache()
 def get_data(cml_id, month):
-    ds = xr.open_dataset('/pd/data/CML/data/reference/anomaly_flags/2022.01.'+cml_id+'_2019_'+month+'.nc').isel(channel_id=0).load()
+    ds = xr.open_dataset('data/2022.01.'+cml_id+'_2019_'+month+'.nc').isel(channel_id=0).load()
     meta = str(np.round(ds.length.values, decimals=2))+' '+str(np.round(ds.frequency.values/1e9, decimals=2))
     data = ds.to_pandas()
     ds.close()
     data['date'] = data.index
     data = data.rename(columns={'txrx':'trsl1', 'rainfall_amount':'R'})
-    ds2 = xr.open_dataset('/pd/data/CML/data/reference/anomaly_flags/2022.01.'+cml_id+'_2019_'+month+'.nc').isel(channel_id=1).txrx.load()
+    ds2 = xr.open_dataset('data/2022.01.'+cml_id+'_2019_'+month+'.nc').isel(channel_id=1).txrx.load()
     df2 = ds2.to_pandas()
     ds2.close()
     trsl2 = df2.values.copy()
@@ -63,7 +63,7 @@ ticker2 = Select(value=DEFAULT_TICKERS[0], options=DEFAULT_TICKERS)
 button1 = Button(label="Save flags", button_type="success")
 button2 = Button(label="Delete all flags", button_type="success")
 button2a = Button(label="Delete selected type of flags", button_type="success")
-button2b = Button(label="Delete selected type of flags", button_type="success")
+button2b = Button(label="Delete flags in current selection", button_type="success")
 button3 = Button(label="Flag period", button_type="success")
 LABELS = ["Jump", "Dew", "Diurnal pattern", "Snow", "Strong fluctuation", "Light fluctuation", "Unknown anomaly"]
 
@@ -76,7 +76,7 @@ def callback1(event):
     data = source.to_df()
     cml_id = ticker2.value
     month = ticker1.value
-    with netCDF4.Dataset('/pd/data/CML/data/reference/anomaly_flags/2022.01.'+cml_id+'_2019_'+month+'.nc', 'a') as nc_fh:
+    with netCDF4.Dataset('data/2022.01.'+cml_id+'_2019_'+month+'.nc', 'a') as nc_fh:
         for label in LABELS:
             nc_fh[label][:] = (data[label]>0).astype(bool)
     print('saved')
@@ -120,7 +120,7 @@ def callback3(event):
 button1.on_event(ButtonClick, callback1)
 button2.on_event(ButtonClick, callback2)
 button2a.on_event(ButtonClick, callback2a)
-button2a.on_event(ButtonClick, callback2b)
+button2b.on_event(ButtonClick, callback2b)
 button3.on_event(ButtonClick, callback3)
 
 # set up plots
