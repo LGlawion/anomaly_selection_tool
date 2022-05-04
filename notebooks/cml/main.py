@@ -30,7 +30,7 @@ import netCDF4
 
 # DATA_DIR = join(dirname(__file__), 'daily')
 
-MONTHS = [s.split('_')[-1].split('.')[0] for s in glob.glob('data/2022.01.HY8831_2_HY1116_4_2019_*')]
+MONTHS = list(np.unique([s.split('_')[-1].split('.')[0] for s in glob.glob('data/2022.01.*_2019_*')]))
 MONTHS.sort()
 DEFAULT_TICKERS = list(xr.open_dataset('data/2022.01.cml_list.nc').cml_id.values)
 
